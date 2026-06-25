@@ -1,25 +1,37 @@
-﻿fastapi
+fastapi
 uvicorn
 sqlalchemy
 pydantic
+pydantic-settings
 python-dotenv
 python-multipart
 passlib[bcrypt]==1.7.4
 bcrypt==4.0.1
-
 jinja2
-google-generativeai
-httpx
-sse-starlette
-pypdf
-python-docx
 
-# RAG System Dependencies
+groq
+google-generativeai
+langchain
+langchain-groq
+
 faiss-cpu>=1.7.4
 sentence-transformers>=2.2.0
 numpy>=1.24.0
 
-# Learning Resources Pipeline
-beautifulsoup4>=4.12.0
+pypdf
+python-docx
+
+httpx
+sse-starlette
 requests>=2.31.0
-# Optional: google-api-python-client>=2.0.0  # Only needed if using YouTube Data API v3 with API key
+
+structlog
+python-json-logger
+
+beautifulsoup4>=4.12.0
+
+pytest
+pytest-asyncio
+black
+flake8
+mypy
