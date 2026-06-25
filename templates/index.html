@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="/static/styles.css" />
+  <link rel="stylesheet" href="/static/style.css" />
+  <title>Job PrepMate</title>
+</head>
+<body>
+
+ <nav class="navbar">
+  <div class="nav-container">
+
+    <h2 class="logo">
+      <img src="/static/new_logo.png" alt="Intervista AI logo" class="logo-img">
+      INTERVISTA
+    </h2>
+
+   <div class="nav-links">
+  <a href="/">Home</a>
+  <a href="/#features">Features</a>
+  <a href="/#flow">How it Works</a>
+  <a href="/#contact">Contact</a>
+</div>
+
+      <!-- User menu -->
+      <div class="user-menu">
+        <button class="user-avatar" id="userAvatar">
+          <span class="avatar-circle">{{ username[:1] | upper }}</span>
+        </button>
+
+        <div class="user-dropdown" id="userDropdown">
+          <div class="user-dropdown-header">
+            <div class="user-name">{{ username }}</div>
+          </div>
+
+          <a href="/profile" class="dropdown-item">Dashboard</a>
+          <a href="/logout" class="dropdown-item danger">Logout</a>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</nav>
+
+  <main>
+
+    <section id="input-section" class="card">
+      <h2>Start Your Learning Journey</h2>
+
+      <form id="start-form">
+        <label for="role">Job Role</label>
+        <input type="text" id="role" name="role" value="{{ saved_role }}" placeholder="e.g. Data Analyst" required>
+
+       <select id="level" name="level" required>
+<option value="">-- Select Level --</option>
+
+<option value="intern" {% if saved_level == "intern" %}selected{% endif %}>Intern</option>
+
+<option value="junior" {% if saved_level == "junior" %}selected{% endif %}>Junior</option>
+
+<option value="mid" {% if saved_level == "mid" %}selected{% endif %}>Mid-Level</option>
+
+<option value="senior" {% if saved_level == "senior" %}selected{% endif %}>Senior</option>
+
+</select>
+
+        <label for="company_name">Company Name (optional)</label>
+        <input type="text" id="company_name" name="company_name" value="{{ saved_company_name }}" placeholder="e.g. Acme Corp">
+
+        <label for="job_description">Job Description (optional)</label>
+        <textarea id="job_description" name="job_description" rows="8" placeholder="Paste the full job description here for company-specific interview questions...">{{ saved_job_description }}</textarea>
+
+        <label for="resume">Resume (optional)</label>
+        <input type="file" id="resume" accept=".pdf,.docx" />
+        <small id="resume-status" style="color: var(--text-muted); font-size: 0.85rem;">
+          Upload PDF or DOCX to get personalized interview questions
+        </small>
+
+        <button type="submit" id="start-btn">Start Learning</button>
+      </form>
+    </section>
+
+    <section id="choices-section" class="card" style="display:none;">
+      <h2>What would you like to do?</h2>
+      <p id="role-display" style="color: var(--text-muted); margin-bottom: 20px;"></p>
+
+      <div class="choice-actions">
+        <div style="margin-bottom: 20px;">
+          <h3 style="margin-bottom: 12px;">Interview Mode</h3>
+          <label style="display:block;margin-bottom:8px;">
+            <input type="radio" name="interview_mode" value="placement_simulation" checked>
+            Full Placement Simulation
+          </label>
+          <label style="display:block;margin-bottom:8px;">
+            <input type="radio" name="interview_mode" value="individual_practice">
+            Individual Round Practice
+          </label>
+
+          <div id="round-select-wrap" style="display:none;margin-top:12px;">
+            <label for="interview-round">Select Round</label>
+            <select id="interview-round" style="width:100%;margin-top:6px;">
+              <option value="online_assessment">Online Assessment</option>
+              <option value="technical" selected>Technical Interview</option>
+              <option value="group_discussion">Group Discussion</option>
+              <option value="hr">HR Interview</option>
+            </select>
+          </div>
+        </div>
+
+        <form id="interview-form" method="post" action="/start_interview/">
+          <input type="hidden" id="hidden-role" name="role">
+          <input type="hidden" id="hidden-level" name="level">
+          <input type="hidden" id="hidden-company" name="company_name">
+          <input type="hidden" id="hidden-job-description" name="job_description">
+          <input type="hidden" id="hidden-interview-mode" name="interview_mode" value="placement_simulation">
+          <input type="hidden" id="hidden-selected-round" name="selected_round" value="technical">
+          <button type="submit" class="btn" id="btn-interview">
+            Start Interview
+          </button>
+        </form>
+
+        <form id="roadmap-form" method="post" action="/api/course/create">
+          <input type="hidden" id="hidden-role-roadmap" name="role">
+          <input type="hidden" id="hidden-designation" name="level">
+          <button type="submit" class="btn outline" id="btn-course">
+            Generate Course
+          </button>
+        </form>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+  const startForm = document.getElementById("start-form");
+  const choicesSection = document.getElementById("choices-section");
+  const inputSection = document.getElementById("input-section");
+
+  // Show choices when form is submitted
+  startForm.addEventListener("submit", async function (e) {
+    e.preventDefault();
+
+    const role = document.getElementById("role").value.trim();
+    const level = document.getElementById("level").value;
+    const companyName = document.getElementById("company_name").value.trim();
+    const jobDescription = document.getElementById("job_description").value.trim();
+    const resumeFile = document.getElementById("resume").files[0];
+
+    if (!role || !level) {
+      alert("Please fill all fields.");
+      return;
+    }
+
+    const startBtn = document.getElementById("start-btn");
+    startBtn.textContent = "Saving...";
+    startBtn.disabled = true;
+
+    try {
+      const saveResp = await fetch("/api/save_interview_inputs", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+          role,
+          level,
+          company_name: companyName,
+          job_description: jobDescription,
+        }),
+      });
+      if (!saveResp.ok) {
+        const err = await saveResp.json();
+        alert("Failed to save inputs: " + (err.detail || "Unknown error"));
+        startBtn.textContent = "Start Learning";
+        startBtn.disabled = false;
+        return;
+      }
+    } catch (err) {
+      alert("Failed to save inputs: " + err.message);
+      startBtn.textContent = "Start Learning";
+      startBtn.disabled = false;
+      return;
+    }
+
+    // Upload resume if provided
+    if (resumeFile) {
+      startBtn.textContent = "Uploading resume...";
+      const fd = new FormData();
+      fd.append("file", resumeFile);
+      fd.append("role", role);
+      fd.append("level", level);
+      fd.append("company_name", companyName);
+      fd.append("job_description", jobDescription);
+      try {
+        const resp = await fetch("/api/upload_resume", { method: "POST", body: fd });
+        if (resp.ok) {
+          document.getElementById("resume-status").textContent = "\u2705 Resume uploaded successfully";
+          document.getElementById("resume-status").style.color = "#22c55e";
+        } else {
+          const err = await resp.json();
+          alert("Resume upload failed: " + (err.detail || "Unknown error"));
+          startBtn.textContent = "Start Learning";
+          startBtn.disabled = false;
+          return;
+        }
+      } catch (err) {
+        alert("Resume upload error: " + err.message);
+        startBtn.textContent = "Start Learning";
+        startBtn.disabled = false;
+        return;
+      }
+    }
+
+    startBtn.textContent = "Start Learning";
+    startBtn.disabled = false;
+
+    // Hide input section, show choices section
+    inputSection.style.display = "none";
+    choicesSection.style.display = "block";
+
+    // Display selected role and level
+    const companyLabel = companyName ? ` | Company: ${companyName}` : "";
+    document.getElementById("role-display").innerText = `Role: ${role} | Level: ${level}${companyLabel}`;
+
+    // Set hidden values for both forms
+    document.getElementById("hidden-role").value = role;
+    document.getElementById("hidden-level").value = level;
+    document.getElementById("hidden-company").value = companyName;
+    document.getElementById("hidden-job-description").value = jobDescription;
+    document.getElementById("hidden-role-roadmap").value = role;
+    document.getElementById("hidden-designation").value = level;
+
+  // Show choices section smoothly
+    choicesSection.scrollIntoView({ behavior: "smooth" });
+  });
+
+  const modeRadios = document.querySelectorAll('input[name="interview_mode"]');
+  const roundSelectWrap = document.getElementById("round-select-wrap");
+  const hiddenInterviewMode = document.getElementById("hidden-interview-mode");
+  const hiddenSelectedRound = document.getElementById("hidden-selected-round");
+  const interviewRoundSelect = document.getElementById("interview-round");
+
+  function syncInterviewModeFields() {
+    const selectedMode = document.querySelector('input[name="interview_mode"]:checked');
+    const mode = selectedMode ? selectedMode.value : "placement_simulation";
+    hiddenInterviewMode.value = mode;
+    roundSelectWrap.style.display = mode === "individual_practice" ? "block" : "none";
+    if (mode === "individual_practice") {
+      hiddenSelectedRound.value = interviewRoundSelect.value;
+    } else {
+      hiddenSelectedRound.value = "technical";
+    }
+  }
+
+  modeRadios.forEach((radio) => {
+    radio.addEventListener("change", syncInterviewModeFields);
+  });
+  interviewRoundSelect.addEventListener("change", syncInterviewModeFields);
+  syncInterviewModeFields();
+
+  // Add loading states to buttons on submit
+  document.getElementById('interview-form').addEventListener('submit', () => {
+    syncInterviewModeFields();
+    document.getElementById('btn-interview').textContent = 'Starting interview...';
+    document.getElementById('btn-interview').disabled = true;
+  });
+  document.getElementById('roadmap-form').addEventListener('submit', () => {
+    document.getElementById('btn-course').textContent = 'Loading...';
+    document.getElementById('btn-course').disabled = true;
+  });
+  </script>
+
+<script>
+const avatar = document.getElementById("userAvatar");
+const dropdown = document.getElementById("userDropdown");
+
+avatar.addEventListener("click", () => {
+  dropdown.classList.toggle("show");
+});
+
+window.addEventListener("click", function(e) {
+  if (!avatar.contains(e.target) && !dropdown.contains(e.target)) {
+    dropdown.classList.remove("show");
+  }
+});
+</script>
+
+</body>
+</html>

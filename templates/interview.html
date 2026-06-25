@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="/static/styles.css">
+<title>AI Voice Interview</title>
+</head>
+
+<body>
+
+     <nav class="navbar">
+  <div class="nav-container">
+
+    <h2 class="logo">
+      <img src="/static/new_logo.png" alt="Intervista AI logo" class="logo-img">
+      INTERVISTA
+    </h2>
+
+   <div class="nav-links">
+  <a href="/index">Home</a>
+  <a href="/#features">Features</a>
+  <a href="/#flow">How it Works</a>
+  <a href="/#contact">Contact</a>
+</div>
+
+      <!-- User menu -->
+      <div class="user-menu">
+        <button class="user-avatar" id="userAvatar">
+          <span class="avatar-circle">{{ username[:1] | upper }}</span>
+        </button>
+
+        <div class="user-dropdown" id="userDropdown">
+          <div class="user-dropdown-header">
+            <div class="user-name">{{ username }}</div>
+          </div>
+
+          <a href="/profile" class="dropdown-item">Dashboard</a>
+          <a href="/logout" class="dropdown-item danger">Logout</a>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</nav>
+
+<header class="page-header">
+<h1>AI Voice Interview</h1>
+</header>
+
+
+<main>
+
+<section id="loading-phase" class="card">
+
+<h2>{{ role }} — {{ level }}</h2>
+
+<div class="status-indicator">
+<div class="pulse-dot"></div>
+<span id="loading-status">Preparing your interview questions...</span>
+</div>
+
+</section>
+
+
+
+<section id="interview-phase" class="card" style="display:none;">
+
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+<h2>{{ role }} — {{ level }}</h2>
+<span class="badge" id="question-counter">Question 1 / 5</span>
+</div>
+
+
+<div id="interviewer-bubble" class="interviewer-bubble">
+<div class="bubble-label">AI Interviewer</div>
+<p id="current-question"></p>
+</div>
+
+
+<div id="coding-timer" style="display:none;margin-top:10px;">
+<span>Thinking time: </span>
+<b id="timer-value">120</b> seconds
+</div>
+
+
+<div id="voice-status" class="voice-status">
+<div class="voice-ring" id="voice-ring"></div>
+<span id="voice-status-text">Waiting...</span>
+</div>
+
+
+<div id="transcript-area" style="margin-top:16px;">
+<label style="font-size:0.9rem;">Your answer:</label>
+
+<textarea
+id="live-transcript"
+placeholder="Type your answer or code here..."
+style="min-height:80px;opacity:0.85;"></textarea>
+
+</div>
+
+
+<div style="margin-top:16px;display:flex;gap:12px;flex-wrap:wrap;">
+
+<button id="btn-submit-code" class="btn" style="display:none;width:160px;">
+Submit Answer
+</button>
+
+<button id="btn-skip" class="btn outline" style="width:140px;">Skip Question</button>
+
+<button id="btn-end-early" class="btn outline" style="width:180px;">End Interview Early</button>
+
+</div>
+
+</section>
+
+
+
+<section id="evaluating-phase" class="card" style="display:none;">
+
+<h2>Interview Complete</h2>
+
+<div class="status-indicator">
+<div class="pulse-dot"></div>
+<span id="eval-status">Analyzing your responses...</span>
+</div>
+
+</section>
+
+</main>
+
+
+
+<script>
+
+(function(){
+
+const ROLE="{{ role }}";
+const LEVEL="{{ level }}";
+const USER_ID="{{ user_id }}";
+const TOTAL_QUESTIONS=5;
+const ROUND_EXECUTABLE={{ "true" if round_executable|default(true) else "false" }};
+const CURRENT_ROUND="{{ current_round|default('technical') }}";
+const INTERVIEW_MODE="{{ interview_mode|default('placement_simulation') }}";
+
+let questions=[];
+let answers=[];
+let currentIdx=0;
+
+let recognition=null;
+let isListening=false;
+let answerSubmitted=false;
+let typingTimer=null;
+let silenceTimer=null;
+let manualSubmitMode=false;
+let manualStop=false;
+let recognitionRetryCount=0;
+const MAX_RESTARTS=3;
+
+
+/* BUTTONS */
+
+document.getElementById("btn-skip").onclick = async () => {
+
+if(answerSubmitted) return;
+
+await processAnswer("(skipped)", 0);
+
+};
+
+
+document.getElementById("btn-end-early").onclick = () => {
+
+stopListening();
+evaluateAll();
+
+};
+
+
+document.getElementById("btn-submit-code").onclick = async () => {
+
+if(answerSubmitted) return;
+
+const answer=document.getElementById("live-transcript").value.trim();
+await processAnswer(answer||"(no response)", 120);
+
+};
+
+
+
+/* SPEECH SYNTHESIS */
+
+function speak(text){
+
+return new Promise(resolve=>{
+
+if(!('speechSynthesis' in window)){
+resolve();
+return;
+}
+
+window.speechSynthesis.cancel();
+
+const utter=new SpeechSynthesisUtterance(text);
+
+utter.rate=1;
+utter.pitch=1;
+
+utter.onend=resolve;
+utter.onerror=resolve;
+
+window.speechSynthesis.speak(utter);
+
+});
+
+}
+
+
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+function startListening(){
+  if(!SpeechRecognition){
+    const statusText=document.getElementById("voice-status-text");
+    statusText.textContent="Speech recognition unsupported in this browser.";
+    return;
+  }
+
+  if(isListening) return;
+  manualStop=false;
+  recognitionRetryCount=0;
+
+  const transcript=document.getElementById("live-transcript");
+  const statusText=document.getElementById("voice-status-text");
+  const ring=document.getElementById("voice-ring");
+
+  recognition=new SpeechRecognition();
+  recognition.continuous=true;
+  recognition.interimResults=true;
+  recognition.lang="en-US";
+  recognition.maxAlternatives=1;
+
+  let finalTranscript=transcript.value.trim() || "";
+  window.currentTranscript=finalTranscript;
+
+  const SILENCE_TIMEOUT=8000;
+
+  function resetSilenceTimer(){
+    clearTimeout(silenceTimer);
+    if(!manualSubmitMode && !answerSubmitted){
+      silenceTimer=setTimeout(()=>{
+        finishAnswer();
+      },SILENCE_TIMEOUT);
+    }
+  }
+
+  recognition.onstart=()=>{
+    isListening=true;
+    statusText.textContent="Listening...";
+    ring.classList.add("active");
+    resetSilenceTimer();
+  };
+
+  recognition.onresult=(event)=>{
+    resetSilenceTimer();
+
+    let interim="";
+
+    for(let i=event.resultIndex;i<event.results.length;i++){
+      if(event.results[i].isFinal){
+        finalTranscript += event.results[i][0].transcript + " ";
+        window.currentTranscript = finalTranscript;
+      } else {
+        interim += event.results[i][0].transcript;
+      }
+    }
+
+    transcript.value = finalTranscript + interim;
+  };
+
+  recognition.onerror=(event)=>{
+    console.warn("SpeechRecognition error:", event.error);
+
+    if(event.error=== "not-allowed" || event.error=== "permission-denied"){
+      manualStop=true;
+      statusText.textContent="Microphone permission denied.";
+      isListening=false;
+      ring.classList.remove("active");
+      return;
+    }
+
+    statusText.textContent="Speech recognition error, retrying...";
+  };
+
+  recognition.onend=()=>{
+    isListening=false;
+    ring.classList.remove("active");
+
+    if(answerSubmitted || manualStop) return;
+
+    if(recognitionRetryCount < MAX_RESTARTS){
+      recognitionRetryCount++;
+      statusText.textContent="Reconnecting microphone...";
+      setTimeout(()=> startListening(), 500);
+    } else {
+      statusText.textContent="Listening stopped. Please refresh or check microphone.";
+    }
+  };
+
+  try{
+    recognition.start();
+  }catch(error){
+    console.warn("SpeechRecognition failed to start:", error);
+    statusText.textContent="Unable to start microphone.";
+  }
+}
+
+function stopListening(){
+  manualStop=true;
+  clearTimeout(silenceTimer);
+
+  if(recognition){
+    try{
+      recognition.stop();
+    }catch(_){ }
+    recognition=null;
+  }
+
+  isListening=false;
+  const ring=document.getElementById("voice-ring");
+  ring.classList.remove("active");
+}
+
+
+
+/* TYPING INACTIVITY */
+
+const transcriptBox=document.getElementById("live-transcript");
+
+transcriptBox.addEventListener("input",()=>{
+
+if(manualSubmitMode) return;
+
+clearTimeout(typingTimer);
+
+typingTimer=setTimeout(()=>{
+
+finishAnswer();
+
+},10000);
+
+});
+
+
+
+/* INTERVIEW FLOW */
+
+async function runInterview(){
+
+document.getElementById("loading-phase").style.display="none";
+document.getElementById("interview-phase").style.display="block";
+
+showQuestion();
+
+}
+
+
+
+function showQuestion(){
+
+if(currentIdx >= questions.length){
+evaluateAll();
+return;
+}
+
+answerSubmitted=false;
+
+const qObj = questions[currentIdx];
+const q = typeof qObj === "string" ? qObj : qObj.question;
+
+document.getElementById("question-counter").textContent =
+`Question ${currentIdx+1} / ${questions.length}`;
+
+document.getElementById("current-question").textContent = q;
+
+document.getElementById("live-transcript").value="";
+
+clearTimeout(typingTimer);
+
+/* LAST TWO QUESTIONS REQUIRE MANUAL SUBMIT */
+
+manualSubmitMode = currentIdx >= questions.length - 2;
+
+document.getElementById("btn-submit-code").style.display =
+manualSubmitMode ? "inline-block" : "none";
+
+/* Disable typing while AI speaks */
+
+transcriptBox.disabled=true;
+
+speak(q).then(()=>{
+
+transcriptBox.disabled=false;
+
+/* Start listening only after AI finishes speaking */
+
+startListening();
+
+});
+
+}
+
+
+
+async function finishAnswer(){
+
+if(answerSubmitted) return;
+
+const answer=document.getElementById("live-transcript").value.trim();
+await processAnswer(answer||"(no response)", 30);
+
+}
+
+async function processAnswer(answerText, duration = 30){
+    if(answerSubmitted) return;
+
+    answerSubmitted=true;
+    clearTimeout(typingTimer);
+    stopListening();
+
+    const qObj = questions[currentIdx];
+    const questionText = typeof qObj === 'string' ? qObj : qObj.question || qObj;
+
+    answers.push({
+        question: questionText,
+        answer: answerText || "(no response)",
+        duration: duration,
+    });
+
+    currentIdx++;
+
+    if(answers.length >= TOTAL_QUESTIONS){
+        evaluateAll();
+        return;
+    }
+
+    if(currentIdx >= questions.length){
+        const history = answers.map(item => ({
+            question: item.question,
+            answer: item.answer,
+        }));
+        const nextQuestion = await fetchNextQuestion(history);
+        questions.push(nextQuestion);
+    }
+
+    showQuestion();
+}
+
+
+
+/* API */
+
+async function fetchNextQuestion(history = []){
+
+    const resp = await fetch("/api/interview/next_question", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+            user_id: USER_ID,
+            history: history,
+            role: ROLE,
+            level: LEVEL,
+        }),
+    });
+
+    if(!resp.ok){
+        throw new Error(`Failed to fetch next question (${resp.status})`);
+    }
+
+    return await resp.json();
+
+}
+
+
+
+async function evaluateAll(){
+
+document.getElementById("interview-phase").style.display="none";
+document.getElementById("evaluating-phase").style.display="block";
+
+await fetch("/api/interview/evaluate",{
+
+method:"POST",
+headers:{"Content-Type":"application/json"},
+
+body:JSON.stringify({
+
+role:ROLE,
+level:LEVEL,
+questions_answers:answers
+
+})
+
+});
+
+window.location.href="/report";
+
+}
+
+
+
+/* INIT */
+
+if (!ROUND_EXECUTABLE) {
+  document.getElementById("loading-status").textContent =
+    "This round is not available yet. Please choose Technical Interview for now.";
+} else {
+
+(async function(){
+
+try{
+
+questions=[await fetchNextQuestion([])];
+
+if(!questions.length) throw new Error("No questions");
+
+document.getElementById("loading-status").textContent="Starting interview...";
+
+setTimeout(runInterview,600);
+
+}catch(err){
+
+document.getElementById("loading-status").textContent="Error loading questions";
+
+}
+
+})();
+
+}
+
+})();
+
+</script>
+
+</body>
+</html>

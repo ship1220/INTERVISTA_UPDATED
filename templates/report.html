@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Interview Performance Report</title>
+<link rel="stylesheet" href="/static/styles.css">
+<link rel="stylesheet" href="/static/report.css">
+<style>
+  /* ── Learning Plan inline styles ── */
+  .plan-concept {
+    margin-bottom: 24px;
+    border: 1px solid var(--border, #e2e8f0);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .plan-concept-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 18px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #fff;
+    font-weight: 600;
+    font-size: 15px;
+  }
+  .plan-concept-header .why {
+    margin-left: 0;
+    margin-top: 4px;
+    font-size: 13px;
+    font-weight: 400;
+    opacity: 0.9;
+    display: block;
+  }
+  .plan-concept-header-inner { display: flex; flex-direction: column; gap: 2px; }
+  .plan-resource {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px 18px;
+    border-bottom: 1px solid var(--border, #f0f0f0);
+    transition: background 0.15s;
+  }
+  .plan-resource:last-child { border-bottom: none; }
+  .plan-resource:hover { background: var(--hover-bg, #f8fafc); }
+  .src-icon {
+    flex-shrink: 0;
+    width: 32px; height: 32px;
+    border-radius: 7px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px; font-weight: 700; color: #fff;
+  }
+  .src-yt  { background: #FF0000; }
+  .src-gfg { background: #2f8d46; }
+  .src-web { background: #4285F4; }
+  .plan-resource-info { flex: 1; min-width: 0; }
+  .plan-resource-title {
+    font-weight: 600;
+    color: var(--text-primary, #1a202c);
+    font-size: 14px;
+    margin-bottom: 3px;
+    word-break: break-word;
+  }
+  .plan-resource-explanation {
+    font-size: 13px;
+    color: var(--text-muted, #718096);
+    font-style: italic;
+    line-height: 1.5;
+    margin-bottom: 4px;
+  }
+  .plan-resource-meta {
+    font-size: 11px;
+    color: var(--text-muted, #9ca3af);
+    text-transform: capitalize;
+  }
+  .plan-resource-link {
+    flex-shrink: 0;
+    align-self: center;
+  }
+  .plan-resource-link a {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 12px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #fff;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    border-radius: 7px;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+  .plan-resource-link a:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(102,126,234,.35);
+  }
+  /* ── Next Action CTA ── */
+  .next-action-box {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 18px 20px;
+    background: linear-gradient(135deg, #f0f4ff 0%, #faf5ff 100%);
+    border: 1px solid #c7d2fe;
+    border-radius: 12px;
+    flex-wrap: wrap;
+  }
+  .next-action-icon { font-size: 28px; flex-shrink: 0; }
+  .next-action-text { flex: 1; min-width: 0; }
+  .next-action-text strong { display: block; color: #3730a3; font-size: 15px; margin-bottom: 4px; }
+  .next-action-text span  { font-size: 13px; color: #6366f1; }
+  .next-action-btn {
+    display: inline-block;
+    padding: 9px 20px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #fff;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    border-radius: 9px;
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+  .next-action-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(102,126,234,.4);
+  }
+  /* ── Strengths / Weaknesses in per-answer cards ── */
+  .strength { color: #059669; }
+  .weakness { color: #dc2626; }
+</style>
+</head>
+
+<body>
+<nav class="navbar">
+  <div class="nav-container">
+    <h2 class="logo">
+      <img src="/static/new_logo.png" alt="Intervista AI logo" class="logo-img">
+      INTERVISTA
+    </h2>
+    <div class="nav-links">
+      <a href="/index">Home</a>
+      <a href="/#features">Features</a>
+      <a href="/#flow">How it Works</a>
+      <a href="/#contact">Contact</a>
+    </div>
+    <div class="user-menu">
+      <button class="user-avatar" id="userAvatar">
+        <span class="avatar-circle">{{ username[:1] | upper }}</span>
+      </button>
+      <div class="user-dropdown" id="userDropdown">
+        <div class="user-dropdown-header">
+          <div class="user-name">{{ username }}</div>
+        </div>
+        <a href="/profile" class="dropdown-item">Dashboard</a>
+        <a href="/logout" class="dropdown-item danger">Logout</a>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<h1>Interview Performance Report</h1>
+
+<main class="report-main">
+
+{% set score = report.overall_score | default(0) %}
+{% set va    = report.voice_analysis  | default({}) %}
+{% set ca    = report.content_analysis | default({}) %}
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- 1. INTERVIEW SUMMARY                                    -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<section class="card fade-in interview-summary">
+  <h2>Interview Summary</h2>
+  <div class="summary-grid">
+
+    <div class="candidate-info">
+      <p><strong>Role:</strong> {{ report.candidate_profile.role }}</p>
+      <p><strong>Level:</strong> {{ report.candidate_profile.level | capitalize }}</p>
+      <p><strong>Date:</strong> {{ report.candidate_profile.interview_date }}</p>
+      <p><strong>Questions:</strong> {{ report.candidate_profile.total_questions }}</p>
+    </div>
+
+    <div class="performance-info">
+      {% set gauge_color = '#10b981' if score >= 70 else '#f59e0b' if score >= 50 else '#ef4444' %}
+      <div class="score-gauge">
+        <svg width="160" height="160" viewBox="0 0 160 160">
+          <circle class="gauge-bg" cx="80" cy="80" r="68"></circle>
+          <circle class="gauge-fill" cx="80" cy="80" r="68"
+            stroke-dasharray="427.3"
+            stroke-dashoffset="{{ 427.3 - (427.3 * score / 100) }}"
+            style="stroke:{{ gauge_color }};"></circle>
+        </svg>
+        <div class="gauge-label">
+          <span class="gauge-value" style="color:{{ gauge_color }}">{{ score }}</span>
+          <span class="gauge-sub">/100</span>
+        </div>
+      </div>
+
+      <span class="verdict-badge
+        {% if report.verdict.recommendation == 'SHORTLISTED' %}shortlisted
+        {% elif report.verdict.recommendation == 'BORDERLINE' %}borderline
+        {% else %}reject{% endif %}">
+        {{ report.verdict.recommendation }}
+      </span>
+      <p class="muted-text">Confidence: {{ report.verdict.confidence_level }}</p>
+
+      {% if report.verdict.suitable_roles %}
+      <div class="role-tags">
+        {% for role in report.verdict.suitable_roles %}
+          <span class="role-tag">{{ role }}</span>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- 2. PERFORMANCE SUMMARY                                  -->
+<!-- ═══════════════════════════════════════════════════════ -->
+{% if report.performance_summary %}
+<section class="card fade-in">
+  <h2>Performance Summary</h2>
+  <div class="summary-text">{{ report.performance_summary }}</div>
+</section>
+{% endif %}
+
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- 3. JOB MATCH (when JD was provided)                    -->
+<!-- ═══════════════════════════════════════════════════════ -->
+{% if report.job_match_analysis %}
+{% set jma = report.job_match_analysis %}
+<section class="card fade-in">
+  <h2>Job Match Analysis</h2>
+  {% if jma.ats_score is not none %}
+    <p><strong>ATS Match Score:</strong> {{ jma.ats_score }}/100</p>
+  {% endif %}
+  {% if jma.matched_skills %}
+    <h3>Matched Skills</h3>
+    <ul class="skill-match-list">
+      {% for skill in jma.matched_skills %}
+        <li><span class="skill-match-ok">&#10003;</span> {{ skill }}</li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+  {% if jma.missing_skills %}
+    <h3>Missing Skills</h3>
+    <ul class="skill-match-list">
+      {% for skill in jma.missing_skills %}
+        <li><span class="skill-match-gap">&#10007;</span> {{ skill }}</li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+</section>
+{% endif %}
+
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- 4. AREAS FOR IMPROVEMENT (weak topics + why it matters) -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<section class="card fade-in">
+  <h2>Areas for Improvement</h2>
+
+  {% if report.weak_topics %}
+    {% for category, topics in report.weak_topics.items() %}
+      {% if topics %}
+        <h3>{{ category }}</h3>
+        <div class="topic-tags">
+          {% for topic in topics %}
+            <span class="topic-tag">{{ topic }}</span>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endfor %}
+  {% else %}
+    <p>No major weak topics detected.</p>
+  {% endif %}
+</section>
+
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- 5. PERSONALIZED LEARNING PLAN (inline resources)       -->
+<!-- ═══════════════════════════════════════════════════════ -->
+{% if resources_by_concept %}
+<section class="card fade-in">
+  <h2>📚 Personalized Learning Plan</h2>
+  <p style="color:var(--text-muted);margin-bottom:20px;">
+    Based on your performance, we've curated real resources for each weak area.
+    Study these before your next attempt.
+  </p>
+
+  {% for concept, resources in resources_by_concept.items() %}
+  <div class="plan-concept">
+    <div class="plan-concept-header">
+      <span>🎯</span>
+      <div class="plan-concept-header-inner">
+        <span>{{ concept }}</span>
+        <span class="why">Review this topic, then retake the Technical Interview.</span>
+      </div>
+    </div>
+
+    {% for cr in resources %}
+    <div class="plan-resource">
+      <!-- Source icon -->
+      {% if cr.source and 'youtube' in cr.source.lower() %}
+        <div class="src-icon src-yt">▶</div>
+      {% elif cr.source and 'geeks' in cr.source.lower() %}
+        <div class="src-icon src-gfg">G</div>
+      {% else %}
+        <div class="src-icon src-web">🔗</div>
+      {% endif %}
+
+      <div class="plan-resource-info">
+        <div class="plan-resource-title">{{ cr.title or 'Untitled Resource' }}</div>
+        {% if cr.explanation %}
+          <div class="plan-resource-explanation">{{ cr.explanation }}</div>
+        {% endif %}
+        <div class="plan-resource-meta">{{ cr.source or 'Web' }}</div>
+      </div>
+
+      <div class="plan-resource-link">
+        {% if cr.url %}
+          <a href="{{ cr.url }}" target="_blank" rel="noopener noreferrer">
+            {{ 'Watch ↗' if cr.source and 'youtube' in cr.source.lower() else 'Read ↗' }}
+          </a>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endfor %}
+
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- 6. NEXT PRACTICE RECOMMENDATION                        -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<section class="card fade-in">
+  <h2>Next Practice Recommendation</h2>
+  <div class="next-action-box">
+    <div class="next-action-icon">🎯</div>
+    <div class="next-action-text">
+      <strong>Review the resources above, then retake the interview.</strong>
+      <span>
+        Focus on:
+        {% set ns = namespace(first=true) %}
+        {% for category, topics in report.weak_topics.items() %}
+          {% for topic in topics[:2] %}
+            {% if not ns.first %}, {% endif %}{{ topic }}{% set ns.first = false %}
+          {% endfor %}
+        {% endfor %}
+        — then attempt a fresh Technical Interview to track your improvement.
+      </span>
+    </div>
+    <form action="/start_interview/" method="post" style="margin:0;">
+      <input type="hidden" name="role"  value="{{ report.candidate_profile.role }}">
+      <input type="hidden" name="level" value="{{ report.candidate_profile.level }}">
+      <input type="hidden" name="interview_mode"   value="placement_simulation">
+      <input type="hidden" name="selected_round"   value="technical">
+      <button type="submit" class="next-action-btn">Retry Interview →</button>
+    </form>
+  </div>
+</section>
+
+{% elif report.new_course %}
+<!-- Fallback: resources not yet loaded — show link -->
+<section class="card fade-in">
+  <h2>📚 Personalized Learning Plan</h2>
+  <p>We've prepared curated resources for your weak areas.</p>
+  <div style="margin-top:16px;">
+    <a href="/course/{{ report.new_course.course_id }}" class="btn">View Learning Plan</a>
+  </div>
+</section>
+{% endif %}
+
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- 7. VOICE ANALYSIS                                      -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<section class="card fade-in">
+  <h2>Voice Analysis</h2>
+  {% if va and va.confidence_score and va.confidence_score > 0 %}
+  <div class="metrics-grid">
+    <div class="metric-card">
+      <div class="metric-value">{{ va.speaking_pace_wpm | default('--') }}</div>
+      <div class="metric-label">Speaking Pace (WPM)</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-value">{{ va.total_filler_words | default('--') }}</div>
+      <div class="metric-label">Filler Words</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-value">{{ va.clarity_score | default('--') }}</div>
+      <div class="metric-label">Clarity</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-value">{{ va.engagement_score | default('--') }}</div>
+      <div class="metric-label">Engagement</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-value">{{ va.confidence_score | round(1) }}</div>
+      <div class="metric-label">Confidence</div>
+    </div>
+  </div>
+  {% else %}
+  <p style="color:var(--text-muted);font-style:italic;">
+    Audio analysis not available or insufficient data to calculate voice metrics.
+  </p>
+  {% endif %}
+</section>
+
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- 8. CONTENT ANALYSIS                                    -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<section class="card fade-in">
+  <h2>Content Analysis</h2>
+
+  {% macro score_bar(label, value) %}
+  <div class="analysis-block">
+    <strong>{{ label }}</strong>
+    <div class="score-bar-wrap">
+      <div class="score-bar">
+        <div class="score-bar-fill"
+          style="width:{{ value | default(0) }}%;
+          background-color:{% if value >= 70 %}#22c55e{% elif value >= 40 %}#f59e0b{% else %}#ef4444{% endif %};">
+        </div>
+      </div>
+      <span class="score-bar-value">{{ value | default(0) }}</span>
+    </div>
+  </div>
+  {% endmacro %}
+
+  {{ score_bar("Average Answer Score", ca.average_score) }}
+  {{ score_bar("Relevance",             ca.relevance_score) }}
+  {{ score_bar("Depth of Explanation",  ca.depth_score) }}
+  {{ score_bar("STAR Method Usage",     ca.star_method_score) }}
+</section>
+
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- 9. DETAILED ANSWER REVIEW                              -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<section class="card fade-in">
+  <h2>Detailed Answer Review</h2>
+
+  {% for ans in report.detailed_answers %}
+  <details class="answer-card">
+    <summary>
+      <span class="question-title">Q{{ loop.index }}. {{ ans.question }}</span>
+      <span class="score-pill
+        {% if ans.score >= 70 %}green{% elif ans.score >= 40 %}yellow{% else %}red{% endif %}">
+        {{ ans.score }}/100
+      </span>
+    </summary>
+
+    <div class="answer-content">
+
+      <div class="answer-section">
+        <strong>Your Answer</strong>
+        <div class="transcript-box">{{ ans.transcript }}</div>
+      </div>
+
+      {% if ans.strengths %}
+      <div class="answer-section">
+        <strong class="strength">Strengths</strong>
+        <ul>{% for s in ans.strengths %}<li>{{ s }}</li>{% endfor %}</ul>
+      </div>
+      {% endif %}
+
+      {% if ans.weaknesses %}
+      <div class="answer-section">
+        <strong class="weakness">Areas to Improve</strong>
+        <ul>{% for w in ans.weaknesses %}<li>{{ w }}</li>{% endfor %}</ul>
+      </div>
+      {% endif %}
+
+      {% if ans.ideal_answer %}
+      <div class="answer-section">
+        <strong class="ideal">Ideal Answer</strong>
+        <div class="ideal-box">{{ ans.ideal_answer }}</div>
+      </div>
+      {% endif %}
+
+      <div class="answer-section">
+        <strong>Voice Metrics</strong>
+        <div class="answer-voice-chips">
+          <span class="voice-chip">{{ ans.voice_metrics.speaking_pace_wpm | default(0) }} WPM</span>
+          <span class="voice-chip">{{ ans.voice_metrics.word_count | default(0) }} words</span>
+          <span class="voice-chip">{{ ans.voice_metrics.filler_word_count | default(0) }} fillers</span>
+          <span class="voice-chip">Clarity {{ ans.voice_metrics.clarity_score | default(0) }}</span>
+          <span class="voice-chip">Engagement {{ ans.voice_metrics.engagement_score | default(0) }}</span>
+        </div>
+      </div>
+
+    </div>
+  </details>
+  {% endfor %}
+</section>
+
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- ACTIONS                                                -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="actions">
+  <form action="/start_interview/" method="post">
+    <input type="hidden" name="role"  value="{{ report.candidate_profile.role }}">
+    <input type="hidden" name="level" value="{{ report.candidate_profile.level }}">
+    <input type="hidden" name="interview_mode"  value="placement_simulation">
+    <input type="hidden" name="selected_round"  value="technical">
+    <button type="submit" class="btn">Give Interview Again</button>
+  </form>
+  <a href="/index"   class="btn outline">Back to Dashboard</a>
+  <a href="/profile" class="btn outline">View Dashboard</a>
+</div>
+
+</main>
+
+<script>
+const avatar   = document.getElementById("userAvatar");
+const dropdown = document.getElementById("userDropdown");
+avatar.addEventListener("click", () => dropdown.classList.toggle("show"));
+window.addEventListener("click", (e) => {
+  if (!avatar.contains(e.target) && !dropdown.contains(e.target))
+    dropdown.classList.remove("show");
+});
+</script>
+</body>
+</html>

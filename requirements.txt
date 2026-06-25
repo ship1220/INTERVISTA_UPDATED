@@ -1,0 +1,25 @@
+﻿fastapi
+uvicorn
+sqlalchemy
+pydantic
+python-dotenv
+python-multipart
+passlib[bcrypt]==1.7.4
+bcrypt==4.0.1
+
+jinja2
+google-generativeai
+httpx
+sse-starlette
+pypdf
+python-docx
+
+# RAG System Dependencies
+faiss-cpu>=1.7.4
+sentence-transformers>=2.2.0
+numpy>=1.24.0
+
+# Learning Resources Pipeline
+beautifulsoup4>=4.12.0
+requests>=2.31.0
+# Optional: google-api-python-client>=2.0.0  # Only needed if using YouTube Data API v3 with API key

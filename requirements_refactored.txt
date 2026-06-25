@@ -1,0 +1,40 @@
+# Core dependencies
+fastapi
+uvicorn
+sqlalchemy
+pydantic
+pydantic-settings
+python-dotenv
+python-multipart
+passlib[bcrypt]>=1.7.9
+bcrypt>=4.0.1
+jinja2
+
+# LLM & AI
+groq
+google-generativeai
+langchain
+langchain-groq
+sentence-transformers
+faiss-cpu
+
+# Data & Vector Search
+pypdf
+python-docx
+numpy
+
+# Utilities
+httpx
+sse-starlette
+requests
+
+# Logging & Monitoring
+structlog
+python-json-logger
+
+# Development
+pytest
+pytest-asyncio
+black
+flake8
+mypy
